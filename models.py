@@ -12,6 +12,7 @@ def setup_db(app, database_path=database_path):
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.app = app
     db.init_app(app)
+    db.create_all()
 
 actor_movie = db.Table('actor_movie',
     db.Column('actor_id', db.Integer, db.ForeignKey('actor.id'), primary_key=True),
