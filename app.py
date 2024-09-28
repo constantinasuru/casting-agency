@@ -1,7 +1,8 @@
 import os
 from flask import Flask
-from models import setup_db
+from models import setup_db, db  # Import db from models
 from flask_cors import CORS
+from flask_migrate import Migrate  # Import Flask-Migrate
 
 def create_app(test_config=None):
 
@@ -9,9 +10,12 @@ def create_app(test_config=None):
     setup_db(app)
     CORS(app)
 
+    # Initialize Flask-Migrate with app and db
+    migrate = Migrate(app, db)
+
     @app.route('/')
     def get_greeting():
-        excited = os.environ['EXCITED']
+        excited = os.getenv('EXCITED', 'false')
         greeting = "Hello"
         if excited == 'true':
             greeting = greeting + "!!!!! You are doing great in this Udacity project."
