@@ -35,7 +35,8 @@ class Actor(db.Model):
             "id": self.id,
             "name": self.name,
             "age": self.age,
-            "gender": self.gender
+            "gender": self.gender,
+            "movie_ids": [movie.id for movie in self.movies]
         }
 
 class Movie(db.Model):
@@ -49,5 +50,6 @@ class Movie(db.Model):
         return {
             "id": self.id,
             "title": self.title,
-            "release_date": self.release_date
+            "release_date": self.release_date,
+            "actor_ids": [actor.id for actor in self.actors]
         }
