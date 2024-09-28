@@ -6,7 +6,7 @@ from urllib.request import urlopen
 
 AUTH0_DOMAIN = 'dev-tool.eu.auth0.com'
 ALGORITHMS = ['RS256']
-API_AUDIENCE = 'drink'
+API_AUDIENCE = 'casting'
 
 
 class AuthError(Exception):
@@ -113,8 +113,6 @@ def requires_auth(permission=''):
     def requires_auth_decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            if permission == 'get:drinks': #this is the public endpoint which doesn't require authentication
-                return f(*args, **kwargs)
             token = get_token_auth_header()
             try:
                 payload = verify_decode_jwt(token)

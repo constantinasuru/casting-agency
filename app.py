@@ -1,9 +1,9 @@
 import os
 from datetime import datetime
 
-from flask import Flask, jsonify, abort, request
+from flask import Flask, jsonify, abort, request, redirect, url_for, session
 
-from auth import AuthError
+from auth import AuthError, requires_auth
 from models import setup_db, db, Actor, Movie  # Import db from models
 from flask_cors import CORS
 from flask_migrate import Migrate  # Import Flask-Migrate
@@ -16,6 +16,42 @@ def create_app(test_config=None):
 
     # Initialize Flask-Migrate with app and db
     migrate = Migrate(app, db)
+
+    AUTH0_DOMAIN = 'dev-tool.eu.auth0.com'
+    API_IDENTIFIER = 'casting'
+    CLIENT_ID = 'ePggLb2HCSsTOfDujcbMhIeH7Yk1o6fP'
+    CLIENT_SECRET = 'Z67vW6Fw4ihnJzrBS1QZmt5CwGTKOQkP9e5u_tfbSO5wiWrRPWNn0l1XSOkQnEEH'
+    REDIRECT_URI = 'http://127.0.0.1:5000/'
+
+    app.secret_key = 'fsda'  # Change this to a random secret key
+
+    @app.route('/login')
+    def login():
+        return redirect(f'https://{AUTH0_DOMAIN}/authorize?'
+                        f'audience={API_IDENTIFIER}&'
+                        f'client_id={CLIENT_ID}&'
+                        f'response_type=token&'
+                        f'redirect_uri={REDIRECT_URI}')
+
+    @app.route('/callback')
+    def callback():
+        # This route will be called by Auth0 after the user logs in
+        # You will typically get the access token here from the URL
+        access_token = request.args.get('access_token')
+        session['access_token'] = access_token
+        return redirect(url_for('dashboard'))
+
+    @app.route('/dashboard')
+    def dashboard():
+        access_token = session.get('access_token')
+        if not access_token:
+            return redirect(url_for('login'))
+
+        # Here you can use the access token to make authenticated requests
+        return jsonify({
+            'message': 'Welcome to the dashboard!',
+            'access_token': access_token
+        })
 
     @app.route('/')
     def get_greeting():
@@ -30,6 +66,7 @@ def create_app(test_config=None):
         return "Be cool, man, be coooool! You're almost a FSND grad!"
 
     @app.route('/actors', methods=['GET'])
+    @requires_auth('get:actors')
     def get_actors():
         result = Actor.query.all()
         if not result:
@@ -43,6 +80,7 @@ def create_app(test_config=None):
         })
 
     @app.route('/actors/<int:actor_id>', methods=['GET'])
+    @requires_auth('get:actors')
     def get_actor(actor_id):
         actor = Actor.query.get(actor_id)
         if actor is None:
@@ -53,6 +91,7 @@ def create_app(test_config=None):
         })
 
     @app.route('/actors', methods=['POST'])
+    @requires_auth('post:actors')
     def create_actor():
         body = request.get_json()
         name = body.get('name')
@@ -73,6 +112,7 @@ def create_app(test_config=None):
             abort(422)
 
     @app.route('/actors/<int:actor_id>', methods=['PATCH'])
+    @requires_auth('patch:actors')
     def update_actor(actor_id):
         body = request.get_json()
         name = body.get('name')
@@ -100,6 +140,7 @@ def create_app(test_config=None):
             abort(422)
 
     @app.route('/actors/<int:actor_id>', methods=['DELETE'])
+    @requires_auth('delete:actors')
     def delete_actor(actor_id):
         actor = Actor.query.get(actor_id)
         if actor is None:
@@ -117,6 +158,7 @@ def create_app(test_config=None):
             abort(422)
 
     @app.route('/movies', methods=['GET'])
+    @requires_auth('get:movies')
     def get_movies():
         result = Movie.query.all()
         if not result:
@@ -130,6 +172,7 @@ def create_app(test_config=None):
         })
 
     @app.route('/movies/<int:movie_id>', methods=['GET'])
+    @requires_auth('get:movies')
     def get_movie(movie_id):
         movie = Movie.query.get(movie_id)
         if movie is None:
@@ -140,6 +183,7 @@ def create_app(test_config=None):
         })
 
     @app.route('/movies', methods=['POST'])
+    @requires_auth('post:movies')
     def create_movie():
         body = request.get_json()
         title = body.get('title')
@@ -162,6 +206,7 @@ def create_app(test_config=None):
             abort(422)
 
     @app.route('/movies/<int:movie_id>', methods=['PATCH'])
+    @requires_auth('patch:movies')
     def update_movie(movie_id):
         body = request.get_json()
         title = body.get('title')
@@ -187,6 +232,7 @@ def create_app(test_config=None):
             abort(422)
 
     @app.route('/movies/<int:movie_id>', methods=['DELETE'])
+    @requires_auth('delete:movies')
     def delete_movie(movie_id):
         try:
             movie = Movie.query.get(movie_id)
@@ -204,6 +250,7 @@ def create_app(test_config=None):
             abort(422)
 
     @app.route('/movies/<int:movie_id>/actors', methods=['POST'])
+    @requires_auth('patch:movies')
     def link_movie_to_actors(movie_id):
         movie = Movie.query.get(movie_id)
         if not movie:
@@ -244,12 +291,20 @@ def create_app(test_config=None):
         }), 404)
 
     @app.errorhandler(400)
-    def not_found(error):
+    def bad_request(error):
         return (jsonify({
             "success": False,
             "error": 400,
-            "message": "Invalid input"
+            "message": "Bad Request"
         }), 400)
+
+    @app.errorhandler(401)
+    def unauthorised(error):
+        return (jsonify({
+            "success": False,
+            "error": 401,
+            "message": "Unauthorized"
+        }), 401)
 
     @app.errorhandler(403)
     def forbidden(error):
@@ -257,6 +312,14 @@ def create_app(test_config=None):
             "success": False,
             "error": 403,
             "message": "You don't have the permission to access the requested resource."
+        }), 403)
+
+    @app.errorhandler(405)
+    def method_not_allowed(error):
+        return (jsonify({
+            "success": False,
+            "error": 405,
+            "message": "Method not allowed."
         }), 403)
 
     @app.errorhandler(AuthError)
