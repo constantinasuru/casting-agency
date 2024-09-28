@@ -29,9 +29,24 @@ class Actor(db.Model):
     movies = db.relationship('Movie', secondary=actor_movie, lazy='subquery',
                              backref=db.backref('actors', lazy=True))
 
+    def get_actor(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "age": self.age,
+            "gender": self.gender
+        }
+
 class Movie(db.Model):
     __tablename__ = 'movie'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     title = db.Column(db.String(), nullable=False)
     release_date = db.Column(db.DateTime, nullable=False)
+
+    def get_movie(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "release_date": self.release_date
+        }
