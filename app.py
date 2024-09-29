@@ -114,6 +114,8 @@ def create_app(test_config=None):
     @requires_auth('post:actors')
     def create_actor():
         body = request.get_json()
+        if not body:
+            abort(400)
         name = body.get('name')
         age = body.get('age')
         gender = body.get('gender')
@@ -135,21 +137,21 @@ def create_app(test_config=None):
     @requires_auth('patch:actors')
     def update_actor(actor_id):
         body = request.get_json()
+        if not body:
+            abort(400)
         name = body.get('name')
         age = body.get('age')
         gender = body.get('gender')
+        actor = Actor.query.get(actor_id)
+        if actor is None:
+            abort(404)
         try:
-            actor = Actor.query.get(actor_id)
-            print(actor)
-            if actor is None:
-                abort(404)
             if name:
                 actor.name = name
             if age:
                 actor.age = age
             if gender:
                 actor.gender = gender
-            print(actor.get_actor())
             db.session.commit()
             return jsonify({
                 "success": True,
@@ -231,10 +233,10 @@ def create_app(test_config=None):
         body = request.get_json()
         title = body.get('title')
         release_date_str = body.get('release_date')
+        movie = Movie.query.get(movie_id)
+        if movie is None:
+            abort(404)
         try:
-            movie = Movie.query.get(movie_id)
-            if movie is None:
-                abort(404)
             if title:
                 movie.title = title
             if release_date_str:
@@ -254,10 +256,10 @@ def create_app(test_config=None):
     @app.route('/movies/<int:movie_id>', methods=['DELETE'])
     @requires_auth('delete:movies')
     def delete_movie(movie_id):
+        movie = Movie.query.get(movie_id)
+        if movie is None:
+            abort(404)
         try:
-            movie = Movie.query.get(movie_id)
-            if movie is None:
-                abort(404)
             for actor in movie.actors:
                 actor.movies.remove(movie)
             db.session.delete(movie)
@@ -269,7 +271,7 @@ def create_app(test_config=None):
             db.session.rollback()
             abort(422)
 
-    @app.route('/movies/<int:movie_id>/actors', methods=['POST'])
+    @app.route('/movies/<int:movie_id>/actors', methods=['PATCH'])
     @requires_auth('patch:movies')
     def link_movie_to_actors(movie_id):
         movie = Movie.query.get(movie_id)
