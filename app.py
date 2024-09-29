@@ -1,12 +1,14 @@
+import json
 import os
+import http.client
 from datetime import datetime
 
 from flask import Flask, jsonify, abort, request, redirect, url_for, session
 
 from auth import AuthError, requires_auth
-from models import setup_db, db, Actor, Movie  # Import db from models
+from models import setup_db, db, Actor, Movie
 from flask_cors import CORS
-from flask_migrate import Migrate  # Import Flask-Migrate
+from flask_migrate import Migrate
 
 
 def create_app(test_config=None):
@@ -21,24 +23,43 @@ def create_app(test_config=None):
     API_IDENTIFIER = 'casting'
     CLIENT_ID = 'ePggLb2HCSsTOfDujcbMhIeH7Yk1o6fP'
     CLIENT_SECRET = 'Z67vW6Fw4ihnJzrBS1QZmt5CwGTKOQkP9e5u_tfbSO5wiWrRPWNn0l1XSOkQnEEH'
-    REDIRECT_URI = 'http://127.0.0.1:5000/'
+    if os.getenv("FLASK_ENV") == "production":
+        REDIRECT_URI = 'https://casting-agency-3r88.onrender.com/callback'
+    else:
+        REDIRECT_URI = 'http://127.0.0.1:5000/callback'
 
-    app.secret_key = 'fsda'  # Change this to a random secret key
+    app.secret_key = 'fsda'
 
     @app.route('/login')
     def login():
         return redirect(f'https://{AUTH0_DOMAIN}/authorize?'
                         f'audience={API_IDENTIFIER}&'
                         f'client_id={CLIENT_ID}&'
-                        f'response_type=token&'
+                        f'response_type=code&'
                         f'redirect_uri={REDIRECT_URI}')
 
     @app.route('/callback')
     def callback():
-        # This route will be called by Auth0 after the user logs in
-        # You will typically get the access token here from the URL
-        access_token = request.args.get('access_token')
-        session['access_token'] = access_token
+        code = request.args.get('code')
+
+        if not code:
+            return jsonify({'error': 'Authorization code not found'}), 400
+
+        conn = http.client.HTTPSConnection(AUTH0_DOMAIN)
+        payload = f'client_id={CLIENT_ID}&client_secret={CLIENT_SECRET}&code={code}&grant_type=authorization_code&redirect_uri={REDIRECT_URI}'
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+
+        conn.request("POST", "/oauth/token", payload, headers)
+        res = conn.getresponse()
+        data = res.read()
+
+        if res.status != 200:
+            return jsonify({'error': 'Failed to obtain access token'}), 400
+
+        token_info = json.loads(data)
+
+        session['access_token'] = token_info.get('access_token')
+
         return redirect(url_for('dashboard'))
 
     @app.route('/dashboard')
@@ -47,7 +68,6 @@ def create_app(test_config=None):
         if not access_token:
             return redirect(url_for('login'))
 
-        # Here you can use the access token to make authenticated requests
         return jsonify({
             'message': 'Welcome to the dashboard!',
             'access_token': access_token
