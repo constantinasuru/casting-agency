@@ -19,10 +19,10 @@ def create_app(test_config=None):
     # Initialize Flask-Migrate with app and db
     migrate = Migrate(app, db)
 
-    AUTH0_DOMAIN = 'dev-tool.eu.auth0.com'
-    API_IDENTIFIER = 'casting'
-    CLIENT_ID = 'ePggLb2HCSsTOfDujcbMhIeH7Yk1o6fP'
-    CLIENT_SECRET = 'Z67vW6Fw4ihnJzrBS1QZmt5CwGTKOQkP9e5u_tfbSO5wiWrRPWNn0l1XSOkQnEEH'
+    AUTH0_DOMAIN = os.getenv('AUTH0_DOMAIN')
+    API_IDENTIFIER = os.getenv('API_IDENTIFIER')
+    CLIENT_ID = os.getenv('CLIENT_ID')
+    CLIENT_SECRET = os.getenv('CLIENT_SECRET')
     if os.getenv("FLASK_ENV") == "production":
         REDIRECT_URI = 'https://casting-agency-3r88.onrender.com/callback'
     else:
@@ -75,15 +75,7 @@ def create_app(test_config=None):
 
     @app.route('/')
     def get_greeting():
-        excited = os.getenv('EXCITED', 'false')
-        greeting = "Hello"
-        if excited == 'true':
-            greeting = greeting + "!!!!! You are doing great in this Udacity project."
-        return greeting
-
-    @app.route('/coolkids')
-    def be_cool():
-        return "Be cool, man, be coooool! You're almost a FSND grad!"
+        return 'Welcome!'
 
     @app.route('/actors', methods=['GET'])
     @requires_auth('get:actors')
