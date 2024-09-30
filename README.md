@@ -61,7 +61,7 @@ The application should start running on a local server, returning `Welcome!`, an
 
 
 ## Auth0
-The Auth0 domain is `dev-tool.eu.auth0.com` and API Audience is `drink`
+The Auth0 domain is `dev-tool.eu.auth0.com` and API Audience is `casting`
 
 The created roles and their current permissions are: 
 1. Casting Assistant
@@ -325,6 +325,7 @@ Response example:
    - Before deleting the actor/movie, it removes the movies/actors linked to them so they do not get removed from the database
    - Actors require `Casting Director` role
    - Movies require `Executive Producer` role
+
 Response example:
 ```json
 //actors/2
